@@ -23,6 +23,7 @@ static ssize_t globalmem_read(struct file *filp, char __user *buf, size_t size, 
     if (count > GLOBALMEM_SIZE - p)
         count = GLOBALMEM_SIZE - p;
 
+    mutex_lock(&dev->mutex);
     // copy data from device to user space
     if (copy_to_user(buf, dev->mem + p, count)) {
         ret = -EFAULT;
@@ -32,6 +33,7 @@ static ssize_t globalmem_read(struct file *filp, char __user *buf, size_t size, 
 
         printk(KERN_INFO "read %u bytes(s) from %lu\n", count, p);
     }
+    mutex_unlock(&dev->mutex);
 
     return ret;
 }
@@ -47,6 +49,7 @@ static ssize_t globalmem_write(struct file *filp, const char __user *buf, size_t
     if (count > GLOBALMEM_SIZE - p)
         count = GLOBALMEM_SIZE - p;
 
+    mutex_lock(&dev->mutex);
     if (copy_from_user(dev->mem + p, buf, count))
         ret = -EFAULT;
     else {
@@ -55,6 +58,7 @@ static ssize_t globalmem_write(struct file *filp, const char __user *buf, size_t
 
         printk(KERN_INFO "written %u bytes(s) from %lu\n", count, p);
     }
+    mutex_unlock(&dev->mutex);
 
     return ret;
 }
@@ -98,7 +102,9 @@ static long globalmem_ioctl(struct file *filp, unsigned int cmd, unsigned long a
 
     switch (cmd) {
     case MEM_CLEAR:
+        mutex_lock(&dev->mutex);
         memset(dev->mem, 0, GLOBALMEM_SIZE);
+        mutex_unlock(&dev->mutex);
         printk(KERN_INFO "globalmem is set to zero\n");
         break;
 
@@ -125,7 +131,7 @@ static void globalmem_setup_cdev(struct globalmem_dev* dev, int index) {
     // init cdev, connect file_operation to cdev
     cdev_init(&dev->cdev, &globalmem_fops);
     dev->cdev.owner = THIS_MODULE;
-    // add a cdev
+    // rigister a cdev to system
     err = cdev_add(&dev->cdev, devno, 1);
     if (err) {
         printk(KERN_NOTICE "Error %d adding globalmem%d", err, index);
@@ -152,6 +158,8 @@ static int __init globalmem_init(void) {
         goto fail_malloc;
     }
 
+    // init mutex
+    mutex_init(&globalmem_devp->mutex);
     for (i = 0; i < DEVICE_NUM; ++i) {
         globalmem_setup_cdev(globalmem_devp + i, i);
     }
@@ -166,8 +174,9 @@ fail_malloc:
 static void __exit globalmem_exit(void) {
     int i = 0; 
     for (; i < DEVICE_NUM; ++i)
-        cdev_del(&(globalmem_devp + i)->cdev);
+        cdev_del(&(globalmem_devp + i)->cdev);  // unrigister cdev obj
     kfree(globalmem_devp);
+    // release dev number
     unregister_chrdev_region(MKDEV(globalmem_major, 0), DEVICE_NUM);
 }
 
