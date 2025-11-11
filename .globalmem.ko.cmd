@@ -1,1 +1,0 @@
-savedcmd_/home/zhaoxg/dev/cpps/drivers/globalmem.ko := ld -r -m elf_x86_64 -z noexecstack --build-id=sha1  -T scripts/module.lds -o /home/zhaoxg/dev/cpps/drivers/globalmem.ko /home/zhaoxg/dev/cpps/drivers/globalmem.o /home/zhaoxg/dev/cpps/drivers/globalmem.mod.o;  make -f ./arch/x86/Makefile.postlink /home/zhaoxg/dev/cpps/drivers/globalmem.ko
