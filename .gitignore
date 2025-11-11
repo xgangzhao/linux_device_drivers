@@ -1,0 +1,4 @@
+**/.vscode
+*.ko
+*.mod
+*.o
