@@ -4,6 +4,8 @@
 #include <linux/init.h>
 #include <linux/slab.h>
 #include <linux/blkdev.h>
+#include <linux/fs.h>
+#include <linux/genhd.h>
 #include <linux/vmalloc.h>
 #include <linux/blk-mq.h>
 
@@ -13,9 +15,9 @@ struct sbull_dev {
     short users; /* How many users */
     short media_change; /* Flag a media change? */
     spinlock_t lock; /* For mutual exclusion */
+    struct gendisk *gd; /* The gendisk structure */
     struct blk_mq_tag_set tag_set;
     struct request_queue *queue; /* The device request queue */
-    struct gendisk *gd; /* The gendisk structure */
     struct timer_list timer; /* For simulated media changes */
 };
 
