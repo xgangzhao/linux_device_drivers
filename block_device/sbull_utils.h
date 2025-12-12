@@ -1,3 +1,17 @@
+
+// don's sleep
+// keep atomic
+static blk_status_t my_block_request(struct blk_mq_hw_ctx *, const struct blk_mq_queue_data *) {
+
+}
+
+// block dirver behaviors
+static struct blk_mq_ops queue_ops {
+	.queue_rq = ;  // core option
+}
+
+
+
 // sector: start
 static void transfer(struct sbull_dev* sd, loff_t offset, unsigned int nbytes, char* buffer, int dir) {
     if (offset + nbytes > sd->size) {
@@ -47,27 +61,25 @@ static blk_status_t sbull_block_request_full(struct blk_mq_hw_ctx* hctx,
     blk_status_t rv = BLK_STS_OK;
     int sectors_xferred;
 	struct request *req = qd->rq;
-	struct sbull_dev *sd = req->q->queuedata;
-
-    blk_mq_start_request(req);
-
-
+	struct sbull_dev *dev = req->q->queuedata;
+	
+    blk_mq_start_request(req);  // start handle request
 	if (blk_rq_is_passthrough(req)) {
 		pr_notice("Skip non-fs request\n");
 		rv = BLK_STS_IOERR;
 		goto done;
 	}
-
+	// do work
 	sectors_xferred = block_xfer_request(sd, req);
 
 done:
-	blk_mq_end_request(req, rv);
+	blk_mq_end_request(req, rv);  // end handle request
 
 	return rv;
 }
 
 static struct blk_mq_ops mq_ops_full = {
-	.queue_rq = sbull_block_request_full,
+	.queue_rq = sbull_block_request_full,  // handle request
 };
 
 static

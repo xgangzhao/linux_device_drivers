@@ -127,10 +127,10 @@ out_vfree:
     return rv;
 }
 
-// alloc tag set
+// alloc tag set, then bind queue's ops
 static int setup_rq_tagset(struct sbull_dev* dev) {
     int ret = 0;
-    dev->tag_set.ops = &queue_ops;
+    dev->tag_set.ops = &queue_ops;  // block driver behavior, e.g. handle request 
     dev->tag_set.nr_hw_queues = 1;
     dev->tag_set.queue_depth = 128;
     dev->tag_set.numa_node = NUMA_NO_NODE;
@@ -167,12 +167,12 @@ static int create_blkdev_gdisk(struct sbull_dev* dev, int idx) {
     spin_lock_init(&dev->lock);
     timer_setup(&dev->timer, timeout_cb, 0);
 
-    pr_err("REQUEST_MODE = %d\n", request_mode);
+    pr_info("REQUEST_MODE = %d\n", request_mode);
 
     ret = setup_rq_tagset(dev);
     if (ret < 0) {
         pr_err("setup tagset failure\n");
-        goto out_vfree;
+        goto out_blk_init;
     }
     ret = init_blk_rq(dev);
     if (ret < 0) {
@@ -220,6 +220,7 @@ static int __init sbull_init(void) {
         sbdev[i] = kzalloc(sizeof(struct sbull_dev), GFP_KERNEL);
         if (!sbdev[i]) {
             pr_err("sbull: failed to alloc for dev %d\n", i);
+            status = -ENOMEM;
             goto enomem;
         }
     }
@@ -227,13 +228,15 @@ static int __init sbull_init(void) {
     sbull_major = register_blkdev(sbull_major, MODULE_NAME);
     if (sbull_major <= 0) {
         pr_warn("sbull: unable to get major number\n");
-        return -EBUSY;
+        status = -EBUSY;
+        goto enomem;
     }
     // create disk
-    for (int i = 0; i < SBULL_MAX_DEVICE; ++i) {
+    for (i = 0; i < SBULL_MAX_DEVICE; ++i) {
         status = create_blkdev_gdisk(sbdev[i], i);
         if (status < 0) break;
     }
+    return status;
 
 enomem:
     while (i--) {
